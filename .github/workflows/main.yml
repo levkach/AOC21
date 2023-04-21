@@ -1,1 +1,29 @@
+name: Squash Commits and Check PR Message
 
+on:
+  pull_request_target:
+    types: [ready_for_review]
+
+jobs:
+  squash-commits:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout PR branch
+      uses: actions/checkout@v2
+      with:
+        ref: ${{ github.event.pull_request.head.sha }}
+    - name: Merge and Squash Commits
+      run: |
+        git checkout ${GITHUB_REF#refs/pull/}/merge
+        git merge --squash ${{ github.event.pull_request.base.ref }}
+        git commit -m "${{ github.event.pull_request.title }}" -m "${{ github.event.pull_request.body }}"
+    - name: Check Commit Message
+      run: |
+        if [[ "$(git log -1 --pretty=%B)" != *"Squash"* ]]; then
+          echo "Commit message does not contain the required string"
+          exit 1
+        fi
+    - name: Merge Pull Request
+      uses: peter-evans/merge-pull-request@v3
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
